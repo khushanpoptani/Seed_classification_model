@@ -1,153 +1,123 @@
-# Seed Classification Model Project
+# Seed Scope Django UI
 
-This repository turns the attached thesis into a practical seed-classification project.
+This repository now exposes the simplified seed-image workflow through a Django web interface.
 
-The thesis mixes two different problem statements:
+## Main User Flow
 
-- A tabular UCI Seeds dataset with 3 classes: `Kama`, `Rosa`, and `Canadian`
-- A 14-class image-classification pipeline built with transfer learning on `VGG16`
+1. A user opens the Django site.
+2. On the **Register Seed** page, the user uploads 6 directional images:
+   - front
+   - back
+   - left
+   - right
+   - top
+   - bottom
+3. The system extracts shape parameters automatically and builds a lightweight voxel-style 3D profile.
+4. The seed profile is stored in the local registry.
+5. On the **Identify Seed** page, the user uploads 1 seed image.
+6. The system compares that query image with all saved seed profiles and returns the best matches.
 
-To keep the project usable, this repository implements both in a structured way:
+## Run The UI
 
-- A working tabular pipeline using only the Python packages already available here (`numpy` and `pandas`)
-- An optional image-classification scaffold that matches the thesis design and can be activated once deep-learning dependencies and the 14-class image dataset are available
+Create and activate the virtual environment:
 
-## Project Structure
+```bash
+cd /Volumes/Data/Projects/Major/Seed_classification_model
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Start the Django server:
+
+```bash
+python manage.py runserver
+```
+
+Open the UI in your browser:
 
 ```text
-.
-├── Seed_Thesis.docx
-├── README.md
-├── requirements.txt
-├── requirements-image.txt
-├── docs/
-│   ├── system_design.md
-│   └── thesis_mapping.md
-├── scripts/
-│   ├── predict_tabular.py
-│   ├── train_image.py
-│   └── train_tabular.py
-├── src/
-│   └── seed_classifier/
-│       ├── __init__.py
-│       ├── datasets.py
-│       ├── image_pipeline.py
-│       ├── metrics.py
-│       ├── pipeline.py
-│       ├── preprocessing.py
-│       └── models/
-│           ├── __init__.py
-│           ├── decision_tree.py
-│           ├── gaussian_nb.py
-│           ├── mlp.py
-│           └── random_forest.py
-└── tests/
-    ├── test_metrics.py
-    └── test_pipeline.py
+http://127.0.0.1:8000/
 ```
 
-## What The Project Covers From The Thesis
+## Pages
 
-- Problem statement and motivation for automated seed classification
-- UCI Seeds-style feature-based classification workflow
-- Preprocessing, training, testing, prediction, and evaluation
-- Classical comparison models:
-  - Gaussian Naive Bayes
-  - Decision Tree
-  - Random Forest
-- ANN-style prediction through a NumPy multi-layer perceptron
-- Confusion matrix and macro precision/recall/F1 reporting
-- VGG16 transfer-learning design notes for the 14-class image pipeline
-- System design documentation, including DFD and UML-style diagrams
+- `/`
+  - dashboard
+  - recent registered seeds
+  - quick overview of the flow
+- `/register/`
+  - 6-image registration form
+  - optional metadata fields
+  - calculated parameters shown after registration
+- `/identify/`
+  - single-image query form
+  - ranked matching seeds with scores
+- `/seed/<seed_id>/`
+  - stored profile detail page
+  - original view parameters
+  - generated projection parameters
 
-## Quick Start
+## How Registration Works
 
-Use the built-in demo dataset first:
+The Django registration form calls the image pipeline in [image_pipeline.py](/Volumes/Data/Projects/Major/Seed_classification_model/src/seed_classifier/image_pipeline.py).
 
-```bash
-python3 scripts/train_tabular.py --demo-data --model all
+For each uploaded image, the pipeline:
+
+1. segments the seed from the background
+2. normalizes the silhouette
+3. computes parameters like:
+   - area
+   - perimeter
+   - compactness
+   - width and height
+   - aspect ratio
+   - major and minor axis
+   - asymmetry
+4. combines the 6 silhouettes into a voxel-style 3D seed profile
+5. saves the profile under `artifacts/image_registry/<seed_id>/`
+
+## How Identification Works
+
+When the user uploads one query image, the pipeline:
+
+1. extracts the query silhouette
+2. computes its descriptor
+3. compares it against:
+   - all stored training views
+   - all generated voxel projections
+4. computes similarity scores
+5. returns ranked matches
+
+## Saved Data
+
+Generated seed profiles are stored under:
+
+```text
+artifacts/image_registry/
 ```
 
-Train with your own UCI Seeds-style dataset:
+Uploaded web images are stored under:
 
-```bash
-python3 scripts/train_tabular.py --dataset data/raw/seeds_dataset.csv --model all
+```text
+media/uploads/
 ```
 
-Run inference from a saved artifact:
+Each registered seed stores:
 
-```bash
-python3 scripts/predict_tabular.py \
-  --artifact-dir artifacts/tabular/random_forest \
-  --area 15.2 \
-  --perimeter 14.7 \
-  --compactness 0.87 \
-  --kernel-length 5.6 \
-  --kernel-width 3.2 \
-  --asymmetry 2.1 \
-  --groove-length 5.1
-```
+- `model.json`
+- `model_bundle.npz`
+- `voxel.npy`
+- mask images for each original view
+- projection images for each generated view
 
-Run tests:
+## Legacy Scripts
 
-```bash
-python3 -m unittest discover -s tests -p "test_*.py"
-```
+The command-line scripts still exist:
 
-## Dataset Format
+- [scripts/train_image.py](/Volumes/Data/Projects/Major/Seed_classification_model/scripts/train_image.py)
+- [scripts/identify_seed.py](/Volumes/Data/Projects/Major/Seed_classification_model/scripts/identify_seed.py)
 
-The tabular pipeline expects the following columns:
+But the main user-facing experience is now the Django UI.
 
-- `area`
-- `perimeter`
-- `compactness`
-- `kernel_length`
-- `kernel_width`
-- `asymmetry_coefficient`
-- `kernel_groove_length`
-- `label`
-
-Labels may be:
-
-- Text labels: `Kama`, `Rosa`, `Canadian`
-- Integer labels: `1`, `2`, `3`
-
-If you do not have the original dataset yet, `--demo-data` creates a synthetic thesis-style dataset with the same feature names and classes so the pipeline can be exercised end to end.
-
-## Output Artifacts
-
-Each training run writes files under `artifacts/tabular/<model_name>/`:
-
-- `model.pkl`: trained model + scaler + label mapping
-- `metrics.json`: evaluation metrics
-- `predictions.csv`: predictions for the held-out split
-
-## Image Pipeline
-
-The image pipeline mirrors the thesis architecture:
-
-- Input size `224 x 224 x 3`
-- Transfer learning with `VGG16`
-- Added layers:
-  - average pooling
-  - flatten
-  - dense + ReLU
-  - dropout `0.5`
-  - softmax output
-
-Because this environment does not currently include `tensorflow`, `keras`, or image-processing libraries, the repository includes a ready-to-extend scaffold and dataset-layout validation instead of a fake training script.
-
-## Notes On Thesis Consistency
-
-The thesis includes several conflicting details, including:
-
-- 14 image classes in the CNN section
-- 3 tabular classes in the UCI Seeds section
-- references to unrelated medical-image preprocessing language
-
-This repository keeps those details visible but separates them into:
-
-- a working tabular implementation
-- an optional image extension
-
-See [docs/thesis_mapping.md](/Volumes/Data/Projects/Major/Seed_classification_model/docs/thesis_mapping.md) for the full mapping.
+See [Instructions.md](/Volumes/Data/Projects/Major/Seed_classification_model/Instructions.md) for step-by-step usage.

@@ -1,0 +1,62 @@
+{% extends "seedui/base.html" %}
+
+{% block title %}{{ metadata.name }}{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <span class="eyebrow">Stored Profile</span>
+    <h1>{{ metadata.name }}</h1>
+    <p>{{ metadata.species|default:"Species not provided" }}{% if metadata.source %} · {{ metadata.source }}{% endif %}</p>
+  </section>
+
+  <section class="panel-grid">
+    <article class="panel">
+      <h2>Registration Details</h2>
+      <div class="parameter-list">
+        <div><strong>Seed ID:</strong> {{ metadata.seed_id }}</div>
+        <div><strong>Created:</strong> {{ metadata.created_at }}</div>
+        <div><strong>Notes:</strong> {{ metadata.notes|default:"No notes provided" }}</div>
+      </div>
+    </article>
+    <article class="panel">
+      <h2>Storage</h2>
+      <div class="parameter-list">
+        {% for key, value in metadata.storage.items %}
+          <div><strong>{{ key }}</strong>: {{ value }}</div>
+        {% endfor %}
+      </div>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Original View Parameters</h2>
+    <div class="seed-grid">
+      {% for card in view_cards %}
+        <div class="seed-card static-card">
+          <div class="seed-card-top"><span class="seed-name">{{ card.view_name|title }}</span></div>
+          <div class="parameter-list">
+            {% for key, value in card.parameters %}
+              <div><strong>{{ key }}</strong>: {{ value|floatformat:4 }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Generated Projection Parameters</h2>
+    <div class="seed-grid">
+      {% for card in projection_cards %}
+        <div class="seed-card static-card">
+          <div class="seed-card-top"><span class="seed-name">{{ card.view_name|title }}</span></div>
+          <div class="parameter-list">
+            {% for key, value in card.parameters %}
+              <div><strong>{{ key }}</strong>: {{ value|floatformat:4 }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

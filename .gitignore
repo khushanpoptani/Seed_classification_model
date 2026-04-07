@@ -5,3 +5,6 @@ __pycache__/
 .venv/
 artifacts/
 tmp_image_dataset/
+media/
+db.sqlite3
+.pycache-local/

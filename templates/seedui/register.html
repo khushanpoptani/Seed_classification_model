@@ -1,0 +1,98 @@
+{% extends "seedui/base.html" %}
+
+{% block title %}Register Seed{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <span class="eyebrow">Registration</span>
+    <h1>Build a seed profile from six directional images.</h1>
+    <p>The user gives the seed name. The system calculates the shape parameters automatically.</p>
+  </section>
+
+  <div class="layout-two-column">
+    <section class="panel">
+      <h2>Upload Views</h2>
+      {% if error %}
+        <div class="alert error">{{ error }}</div>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data" class="form-grid">
+        {% csrf_token %}
+        <div class="field-group wide">
+          {{ form.name.label_tag }}
+          {{ form.name }}
+        </div>
+        <div class="field-group">
+          {{ form.species.label_tag }}
+          {{ form.species }}
+        </div>
+        <div class="field-group">
+          {{ form.source.label_tag }}
+          {{ form.source }}
+        </div>
+        <div class="field-group wide">
+          {{ form.notes.label_tag }}
+          {{ form.notes }}
+        </div>
+        <div class="field-group">{{ form.front.label_tag }}{{ form.front }}</div>
+        <div class="field-group">{{ form.back.label_tag }}{{ form.back }}</div>
+        <div class="field-group">{{ form.left.label_tag }}{{ form.left }}</div>
+        <div class="field-group">{{ form.right.label_tag }}{{ form.right }}</div>
+        <div class="field-group">{{ form.top.label_tag }}{{ form.top }}</div>
+        <div class="field-group">{{ form.bottom.label_tag }}{{ form.bottom }}</div>
+        <div class="wide form-actions">
+          <button class="button primary" type="submit">Register Seed</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="panel">
+      <h2>Required Views</h2>
+      <ul class="plain-list">
+        <li>Front</li>
+        <li>Back</li>
+        <li>Left</li>
+        <li>Right</li>
+        <li>Top</li>
+        <li>Bottom</li>
+      </ul>
+      <p class="muted">
+        Use a clean background, keep the seed centered, and keep the scale similar across all six images.
+      </p>
+    </aside>
+  </div>
+
+  {% if result %}
+    <section class="panel success-panel">
+      <div class="panel-head">
+        <h2>Seed Registered</h2>
+        <span class="seed-chip">{{ result.seed_id }}</span>
+      </div>
+      <p><strong>Name:</strong> {{ result.name }}</p>
+      <p><strong>Stored at:</strong> {{ result.seed_dir }}</p>
+
+      <div class="thumb-grid">
+        {% for view_name, url in result.upload_urls.items %}
+          <div class="thumb-card">
+            <span>{{ view_name|title }}</span>
+            <img src="{{ url }}" alt="{{ view_name }} upload preview">
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="seed-grid single-column">
+        {% for view_name, payload in result.views.items %}
+          <div class="seed-card static-card">
+            <div class="seed-card-top">
+              <span class="seed-name">{{ view_name|title }} Parameters</span>
+            </div>
+            <div class="parameter-list">
+              {% for key, value in payload.parameters.items %}
+                <div><strong>{{ key }}</strong>: {{ value|floatformat:4 }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "seedui/base.html" %}
+
+{% block title %}Seed Scope Dashboard{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">Django UI</span>
+      <h1>Register seeds from six images and identify them from one.</h1>
+      <p>
+        This interface wraps the simplified image pipeline: users upload six directional photos to build a
+        stored seed profile, and later upload a single query image to retrieve the closest matches.
+      </p>
+      <div class="hero-actions">
+        <a class="button primary" href="/register/">Register A Seed</a>
+        <a class="button secondary" href="/identify/">Identify A Seed</a>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-card">
+        <span class="stat-label">Registered Profiles</span>
+        <span class="stat-value">{{ seed_count }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Required Training Views</span>
+        <span class="stat-value">6</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Query Images Needed</span>
+        <span class="stat-value">1</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-grid">
+    <article class="panel">
+      <h2>Registration Flow</h2>
+      <ol class="steps">
+        <li>Upload front, back, left, right, top, and bottom images.</li>
+        <li>Enter a seed name and optional source notes.</li>
+        <li>The system extracts silhouettes, calculates parameters, and stores a voxel-style profile.</li>
+      </ol>
+    </article>
+    <article class="panel">
+      <h2>Identification Flow</h2>
+      <ol class="steps">
+        <li>Upload a single seed image from any visible side.</li>
+        <li>The system compares it with all saved training views and generated projections.</li>
+        <li>The UI shows ranked matches with similarity scores and the best matching view.</li>
+      </ol>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Recent Registered Seeds</h2>
+      <a href="/register/" class="inline-link">Add another seed</a>
+    </div>
+    {% if seeds %}
+      <div class="seed-grid">
+        {% for seed in seeds %}
+          <a class="seed-card" href="{{ seed.detail_url }}">
+            <div class="seed-card-top">
+              <span class="seed-name">{{ seed.name }}</span>
+              {% if seed.species %}<span class="seed-chip">{{ seed.species }}</span>{% endif %}
+            </div>
+            <p class="seed-meta">{{ seed.source|default:"Source not provided" }}</p>
+            <span class="seed-date">{{ seed.created_display|default:"Saved" }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-state">No seeds have been registered yet. Start with the register flow.</p>
+    {% endif %}
+  </section>
+{% endblock %}
