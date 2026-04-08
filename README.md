@@ -104,7 +104,7 @@ Seed_classification_model/
 ### 1. Create A Virtual Environment
 
 ```bash
-cd /Volumes/Data/Projects/Major/Seed_classification_model
+cd Seed_classification_model
 python3 -m venv .venv
 source .venv/bin/activate
 ```
