@@ -1,123 +1,292 @@
 # Seed Scope Django UI
 
-This repository now exposes the simplified seed-image workflow through a Django web interface.
+This project is a Django-based seed registration and identification system. Users register a seed by uploading 6 images of the same seed from different directions, and the system builds a simplified 3D-style seed profile from those views. Later, a user can upload 1 query image and the system compares it against all registered seed profiles to return the closest matches.
 
-## Main User Flow
+## What The Project Does
 
-1. A user opens the Django site.
-2. On the **Register Seed** page, the user uploads 6 directional images:
-   - front
-   - back
-   - left
-   - right
-   - top
-   - bottom
-3. The system extracts shape parameters automatically and builds a lightweight voxel-style 3D profile.
-4. The seed profile is stored in the local registry.
-5. On the **Identify Seed** page, the user uploads 1 seed image.
-6. The system compares that query image with all saved seed profiles and returns the best matches.
+- Registers a seed from 6 directional images:
+  - front
+  - back
+  - left
+  - right
+  - top
+  - bottom
+- Extracts the seed silhouette automatically from each image
+- Calculates shape-based parameters from each view
+- Builds a lightweight voxel-style 3D representation from the 6 silhouettes
+- Saves the registered seed in a local image registry
+- Identifies an unknown seed from a single query image
+- Returns ranked matches with similarity scores
 
-## Run The UI
+## Main Workflow
 
-Create and activate the virtual environment:
+### 1. Register A Seed
+
+The user opens the Django UI and goes to `/register/`.
+
+The form asks for:
+- seed name
+- species (optional)
+- source (optional)
+- notes (optional)
+- 6 seed images
+
+After submission, the system:
+1. saves the uploaded images under `media/uploads/registration/`
+2. preprocesses each image into a normalized binary silhouette
+3. computes shape parameters for each view
+4. builds a simplified voxel-style 3D seed model
+5. generates 6 projection views from that model
+6. stores the complete seed profile under `artifacts/image_registry/<seed_id>/`
+7. updates the seed index in `artifacts/image_registry/index.json`
+
+### 2. Identify A Seed
+
+The user opens `/identify/` and uploads 1 seed image.
+
+After submission, the system:
+1. saves the query image under `media/uploads/queries/`
+2. preprocesses the image into a normalized silhouette
+3. computes the query descriptor and shape parameters
+4. compares the query against every registered seed
+5. checks similarity against:
+   - original training views
+   - voxel-generated projection views
+6. sorts all seeds by similarity score
+7. shows the top matches in the browser
+
+## Tech Stack
+
+- Python 3
+- Django 4.2
+- NumPy
+- Pillow
+
+## Project Structure
+
+```text
+Seed_classification_model/
+├── manage.py
+├── README.md
+├── Instructions.md
+├── requirements.txt
+├── seedweb/                  # Django project settings
+├── seedui/                   # Django app for forms and pages
+├── templates/seedui/         # HTML templates
+├── src/seed_classifier/      # Image and legacy tabular pipelines
+├── scripts/                  # CLI entry points
+├── tests/                    # Unit and Django UI tests
+├── media/                    # Uploaded files at runtime
+└── artifacts/image_registry/ # Saved seed profiles
+```
+
+## Important Files
+
+- [manage.py](/Volumes/Data/Projects/Major/Seed_classification_model/manage.py)
+  Django entry point
+- [seedweb/settings.py](/Volumes/Data/Projects/Major/Seed_classification_model/seedweb/settings.py)
+  Django configuration
+- [seedweb/urls.py](/Volumes/Data/Projects/Major/Seed_classification_model/seedweb/urls.py)
+  Root routing
+- [seedui/views.py](/Volumes/Data/Projects/Major/Seed_classification_model/seedui/views.py)
+  Registration, identification, and detail-page logic
+- [seedui/forms.py](/Volumes/Data/Projects/Major/Seed_classification_model/seedui/forms.py)
+  Django forms for image upload
+- [src/seed_classifier/image_pipeline.py](/Volumes/Data/Projects/Major/Seed_classification_model/src/seed_classifier/image_pipeline.py)
+  Core registration and identification pipeline
+- [templates/seedui/register.html](/Volumes/Data/Projects/Major/Seed_classification_model/templates/seedui/register.html)
+  Seed registration UI
+- [templates/seedui/identify.html](/Volumes/Data/Projects/Major/Seed_classification_model/templates/seedui/identify.html)
+  Seed identification UI
+
+## Setup
+
+### 1. Create A Virtual Environment
 
 ```bash
 cd /Volumes/Data/Projects/Major/Seed_classification_model
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+### 2. Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-Start the Django server:
+### 3. Start The Django Server
 
 ```bash
 python manage.py runserver
 ```
 
-Open the UI in your browser:
+Open:
 
 ```text
 http://127.0.0.1:8000/
 ```
 
-## Pages
+## Available Pages
 
 - `/`
-  - dashboard
-  - recent registered seeds
-  - quick overview of the flow
+  Dashboard with quick actions and recent seeds
 - `/register/`
-  - 6-image registration form
-  - optional metadata fields
-  - calculated parameters shown after registration
+  Upload 6 views and create a seed profile
 - `/identify/`
-  - single-image query form
-  - ranked matching seeds with scores
+  Upload 1 image and get ranked seed matches
 - `/seed/<seed_id>/`
-  - stored profile detail page
-  - original view parameters
-  - generated projection parameters
+  View the stored details of a registered seed
 
-## How Registration Works
+## How The Image Pipeline Works
 
-The Django registration form calls the image pipeline in [image_pipeline.py](/Volumes/Data/Projects/Major/Seed_classification_model/src/seed_classifier/image_pipeline.py).
+The pipeline is implemented in [image_pipeline.py](/Volumes/Data/Projects/Major/Seed_classification_model/src/seed_classifier/image_pipeline.py).
 
-For each uploaded image, the pipeline:
+### A. Image Preprocessing
 
-1. segments the seed from the background
-2. normalizes the silhouette
-3. computes parameters like:
-   - area
-   - perimeter
-   - compactness
-   - width and height
-   - aspect ratio
-   - major and minor axis
-   - asymmetry
-4. combines the 6 silhouettes into a voxel-style 3D seed profile
-5. saves the profile under `artifacts/image_registry/<seed_id>/`
+Each uploaded image is:
+1. converted to grayscale
+2. thresholded to separate seed from background
+3. cropped to the largest seed region
+4. centered on a square canvas
+5. resized to a normalized mask size
 
-## How Identification Works
+Output:
+- a clean binary mask of the seed silhouette
 
-When the user uploads one query image, the pipeline:
+### B. Automatic Parameters
 
-1. extracts the query silhouette
-2. computes its descriptor
-3. compares it against:
-   - all stored training views
-   - all generated voxel projections
-4. computes similarity scores
-5. returns ranked matches
+For each view, the system calculates:
+- `area_pixels`
+- `area_ratio`
+- `perimeter_pixels`
+- `compactness`
+- `bbox_width`
+- `bbox_height`
+- `aspect_ratio`
+- `major_axis`
+- `minor_axis`
+- `vertical_asymmetry`
+- `horizontal_asymmetry`
+
+These values are calculated from the silhouette automatically. The user does not enter them manually.
+
+### C. Seed Descriptor
+
+The system also builds a descriptor from:
+- key shape parameters
+- row density profile
+- column density profile
+
+This descriptor helps compare one seed silhouette to another.
+
+### D. Simplified 3D Model
+
+The system combines the 6 orthogonal silhouettes into a voxel grid:
+- front + back
+- left + right
+- top + bottom
+
+This produces a simplified 3D-style volume, not a photorealistic 3D reconstruction.
+
+### E. Matching Logic
+
+When a query image is uploaded:
+1. the query mask and descriptor are generated
+2. the query is compared to every registered seed
+3. each registered seed is checked against:
+   - saved training views
+   - generated projection views
+4. similarity is scored using:
+   - IoU overlap
+   - descriptor similarity
+   - row profile similarity
+   - column profile similarity
+5. the highest-scoring seeds are returned
 
 ## Saved Data
 
-Generated seed profiles are stored under:
+### Uploaded Files
 
-```text
-artifacts/image_registry/
-```
-
-Uploaded web images are stored under:
+Temporary web uploads are stored under:
 
 ```text
 media/uploads/
 ```
 
-Each registered seed stores:
+Examples:
+- `media/uploads/registration/`
+- `media/uploads/queries/`
 
+### Registered Seed Profiles
+
+Each seed is stored under:
+
+```text
+artifacts/image_registry/<seed_id>/
+```
+
+Typical files:
 - `model.json`
 - `model_bundle.npz`
 - `voxel.npy`
-- mask images for each original view
-- projection images for each generated view
+- `front_mask.png`
+- `back_mask.png`
+- `left_mask.png`
+- `right_mask.png`
+- `top_mask.png`
+- `bottom_mask.png`
+- `front_projection.png`
+- `back_projection.png`
+- `left_projection.png`
+- `right_projection.png`
+- `top_projection.png`
+- `bottom_projection.png`
 
-## Legacy Scripts
+### Registry Index
 
-The command-line scripts still exist:
+All registered seeds are listed in:
+
+```text
+artifacts/image_registry/index.json
+```
+
+## CLI Scripts
+
+The Django UI is the main interface, but CLI scripts are also available:
 
 - [scripts/train_image.py](/Volumes/Data/Projects/Major/Seed_classification_model/scripts/train_image.py)
+  Register a seed from 6 image paths
 - [scripts/identify_seed.py](/Volumes/Data/Projects/Major/Seed_classification_model/scripts/identify_seed.py)
+  Identify a seed from 1 query image
 
-But the main user-facing experience is now the Django UI.
+Legacy tabular scripts also remain in the repo, but the current primary workflow is image-based and UI-driven.
 
-See [Instructions.md](/Volumes/Data/Projects/Major/Seed_classification_model/Instructions.md) for step-by-step usage.
+## Testing
+
+Run the main checks with:
+
+```bash
+python manage.py check
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+## Limitations
+
+- This is a simplified image-comparison system, not a deep-learning classifier
+- Accuracy depends heavily on image quality and background contrast
+- The voxel model is an approximation built from silhouettes
+- Similar seeds with nearly identical silhouettes may produce close scores
+
+## Recommended Image Capture Tips
+
+- Use a plain background
+- Keep lighting consistent
+- Keep the seed centered in the frame
+- Avoid shadows crossing the seed boundary
+- Capture the same seed clearly from all 6 directions
+- Keep scale roughly similar across views
+
+## More Help
+
+For step-by-step operating instructions, see [Instructions.md](/Volumes/Data/Projects/Major/Seed_classification_model/Instructions.md).
